@@ -1,0 +1,4 @@
+"""
+Manage sessions Lambda function
+"""
+

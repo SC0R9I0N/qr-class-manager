@@ -1,0 +1,4 @@
+"""
+Scan attendance Lambda function
+"""
+
