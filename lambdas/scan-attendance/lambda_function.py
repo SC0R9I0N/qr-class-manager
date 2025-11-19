@@ -3,6 +3,12 @@ import os
 import sys
 import uuid
 from datetime import datetime
+from shared import auth_utils
+from shared import dynamodb_utils
+from shared import models
+from shared import qr_generator
+from shared import s3_utils
+from shared import sns_utils
 
 # add shared directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
