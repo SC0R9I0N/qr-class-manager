@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_sns as sns,
     RemovalPolicy,
+    aws_cognito as cognito
 )
 from constructs import Construct
 
@@ -62,14 +63,57 @@ class InfraStack(Stack):
         # SNS Topic for attendance notifications
         attendance_topic = sns.Topic(self, "AttendanceTopic")
 
+        # Cognito User Pool
+        user_pool = cognito.UserPool(
+            self, "ClassBitsUserPool",
+            self_sign_up_enabled=True,
+            sign_in_aliases=cognito.SignInAliases(email=True),
+            auto_verify=cognito.AutoVerifiedAttrs(email=True),
+            standard_attributes={
+                "email": cognito.StandardAttribute(required=True, mutable=False)
+            },
+            password_policy=cognito.PasswordPolicy(
+                min_length=8,
+                require_lowercase=True,
+                require_uppercase=True,
+                require_digits=True,
+                require_symbols=False
+            )
+        )
+
+        authorizer = apigw.CognitoUserPoolsAuthorizer(
+            self, "ClassBitsAuthorizer",
+            cognito_user_pools=[user_pool]
+        )
+
+        # Cognito App Client
+        user_pool_client = user_pool.add_client(
+            "ClassBitsAppClient",
+            auth_flows=cognito.AuthFlow(
+                user_password=True,
+                user_srp=True
+            )
+        )
+
+        # Cognito Groups
+        cognito.CfnUserPoolGroup(self, "ProfessorsGroup",
+                                 user_pool_id=user_pool.user_pool_id,
+                                 group_name="professors"
+                                 )
+
+        cognito.CfnUserPoolGroup(self, "StudentsGroup",
+                                 user_pool_id=user_pool.user_pool_id,
+                                 group_name="students"
+                                 )
+
         # Shared environment variables
         env_vars = {
             "CLASSES_TABLE": classes_table.table_name,
             "SESSIONS_TABLE": sessions_table.table_name,
             "ATTENDANCE_TABLE": attendance_table.table_name,
             "QR_CODE_BUCKET": qr_bucket.bucket_name,
-            "USER_POOL_ID": "your-user-pool-id",
-            "COGNITO_CLIENT_ID": "your-client-id",
+            "USER_POOL_ID": user_pool.user_pool_id,
+            "COGNITO_CLIENT_ID": user_pool_client.user_pool_client_id,
             "ATTENDANCE_TOPIC_ARN": attendance_topic.topic_arn,
             # "AWS_REGION": self.region
         }
@@ -118,17 +162,57 @@ class InfraStack(Stack):
         sessions = api.root.add_resource("sessions")
         session_id = sessions.add_resource("{session_id}")
         qr_code = session_id.add_resource("qr-code")
-        qr_code.add_method("POST", apigw.LambdaIntegration(lambdas["generate_qr"]))
+        qr_code.add_method(
+            "POST",
+            apigw.LambdaIntegration(lambdas["generate_qr"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
 
-        sessions.add_method("GET", apigw.LambdaIntegration(lambdas["manage_sessions"]))
-        sessions.add_method("POST", apigw.LambdaIntegration(lambdas["manage_sessions"]))
-        sessions.add_method("PUT", apigw.LambdaIntegration(lambdas["manage_sessions"]))
-        sessions.add_method("DELETE", apigw.LambdaIntegration(lambdas["manage_sessions"]))
+        sessions.add_method(
+            "GET",
+            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
+        sessions.add_method(
+            "POST",
+            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
+        sessions.add_method(
+            "PUT",
+            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
+        sessions.add_method(
+            "DELETE",
+            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
 
         attendance = api.root.add_resource("attendance")
-        attendance.add_method("GET", apigw.LambdaIntegration(lambdas["get_attendance"]))
+        attendance.add_method(
+            "GET",
+            apigw.LambdaIntegration(lambdas["get_attendance"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
         scan = attendance.add_resource("scan")
-        scan.add_method("POST", apigw.LambdaIntegration(lambdas["scan_attendance"]))
+        scan.add_method(
+            "POST",
+            apigw.LambdaIntegration(lambdas["scan_attendance"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
 
         analytics = api.root.add_resource("analytics")
-        analytics.add_method("GET", apigw.LambdaIntegration(lambdas["get_analytics"]))
+        analytics.add_method(
+            "GET",
+            apigw.LambdaIntegration(lambdas["get_analytics"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )

@@ -3,13 +3,41 @@ import json
 import boto3
 from typing import Optional, Dict
 from jose import jwt, JWTError
+import urllib.request
 
 
 # init Cognito client
 cognito_client = boto3.client('cognito-idp')
+COGNITO_REGION = "us-east-1"
 USER_POOL_ID = os.environ.get('USER_POOL_ID', '')
 CLIENT_ID = os.environ.get('COGNITO_CLIENT_ID', '')
 
+JWKS_URL = f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json"
+_jwks_cache = None
+
+def get_jwks():
+    global _jwks_cache
+    if _jwks_cache is None:
+        with urllib.request.urlopen(JWKS_URL) as response:
+            _jwks_cache = json.loads(response.read())["keys"]
+    return _jwks_cache
+
+def verify_jwt(token):
+    try:
+        jwks = get_jwks()
+        headers = jwt.get_unverified_header(token)
+        key = next(k for k in jwks if k["kid"] == headers["kid"])
+        claims = jwt.decode(
+            token,
+            key,
+            algorithms=["RS256"],
+            audience=CLIENT_ID,
+            issuer=f"https://cognito-idp.{COGNITO_REGION}.amazonaws.com/{USER_POOL_ID}"
+        )
+        return claims
+    except (JWTError, StopIteration) as e:
+        print(f"[auth_utils] JWT verification failed: {e}")
+        return None
 
 def get_user_from_event(event: Dict) -> Optional[Dict]:
     """
@@ -48,30 +76,56 @@ def get_user_from_event(event: Dict) -> Optional[Dict]:
 
 
 def verify_token(token: str) -> Optional[Dict]:
-    """
-    Arg:
-        token: JWT token string
-    
-    Returns:
-        Decoded token claims or None if invalid
-    """
+    """Verify and decode a Cognito JWT using JWKS"""
     try:
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        jwks_url = f"https://cognito-idp.{region}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json"
+
+        jwks = get_jwks()
+
+        headers = jwt.get_unverified_header(token)
+        key = next(k for k in _jwks_cache if k["kid"] == headers["kid"])
+
+        claims = jwt.decode(
+            token,
+            key,
+            algorithms=["RS256"],
+            audience=CLIENT_ID,
+            issuer=f"https://cognito-idp.{region}.amazonaws.com/{USER_POOL_ID}"
+        )
+        return claims
+
+    except (JWTError, StopIteration) as e:
+        print(f"JWT verification failed: {e}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error in token verification: {e}")
+        return None
+
+#def verify_token(token: str) -> Optional[Dict]:
+#    """
+#    Arg:
+#        token: JWT token string
+
+#    Returns:
+#        Decoded token claims or None if invalid
+#    """
+#    try:
         # get JWKS URL for the user pool
-        jwks_url = f"https://cognito-idp.{os.environ.get('AWS_REGION', 'us-east-1')}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json"
-        
+#        jwks_url = f"https://cognito-idp.{os.environ.get('AWS_REGION', 'us-east-1')}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json"
+
         # for production, fetch and cache JWKS
         # in production, use jose library with JWKS
         # decode without verification for now but should verify in production
         # TODO: placeholder, implement proper JWKS verification
-        decoded = jwt.get_unverified_claims(token)
-        return decoded
-    except JWTError as e:
-        print(f"Error verifying token: {e}")
-        return None
-    except Exception as e:
-        print(f"Error in token verification: {e}")
-        return None
-
+#        decoded = jwt.get_unverified_claims(token)
+#        return decoded
+#    except JWTError as e:
+#        print(f"Error verifying token: {e}")
+#        return None
+#    except Exception as e:
+#        print(f"Error in token verification: {e}")
+#        return None
 
 def require_professor(user: Optional[Dict]) -> bool:
     """
@@ -110,4 +164,3 @@ def get_user_id(user: Optional[Dict]) -> Optional[str]:
     if not user:
         return None
     return user.get('user_id') or user.get('cognitoIdentityId')
-
