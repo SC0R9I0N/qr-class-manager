@@ -229,6 +229,70 @@ CRUD operations for class sessions
 
 ---
 
+### 6. upload-lecture-materials
+Upload lecture materials (zip files) for a class session
+
+**Endpoint:** `POST /sessions/{session_id}/lecture-materials`
+
+**Request Body:**
+```json
+{
+  "session_id": "string",
+  "file_content": "base64 encoded zip file content",
+  "filename": "lecture_materials.zip"
+}
+```
+
+**Response:**
+```json
+{
+  "session_id": "string",
+  "lecture_material_key": "lectures/{session_id}/lecture_materials.zip",
+  "filename": "lecture_materials.zip",
+  "file_size": 1024000,
+  "message": "Lecture material uploaded successfully"
+}
+```
+
+**Authorization:** Professors only
+
+**Notes:**
+- Max file size: 50 MB
+- Existing lecture material for the session is replaced if new files are uploaded
+- Updates the session record with `lecture_material_key` and `lecture_material_url`
+
+---
+
+### 7. get-lecture-materials
+Generate a presigned URL so students can download lecture materials for a session
+
+**Endpoint:** `GET /lecture-materials?session_id={session_id}`
+
+**Query Parameters:**
+- `session_id` (required): Session identifier
+
+**Response:**
+```json
+{
+  "session_id": "string",
+  "class_id": "string",
+  "class_name": "string",
+  "session_date": "YYYY-MM-DD",
+  "download_url": "https://... (presigned URL)",
+  "expires_in": 3600,
+  "message": "Download URL generated successfully"
+}
+```
+
+**Authorization:** Students only
+
+**Notes:**
+- Students must have marked attendance for the session before downloading materials
+- Presigned URLs expire after 1 hour (default)
+- Returns 404 if no lecture materials are available for the session
+
+---
+
 ## Environment Variables
 
 The following environment variables should be configured for each Lambda function:
