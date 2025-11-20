@@ -35,7 +35,17 @@ lambdas/
 │   ├── lambda_function.py
 │   └── requirements.txt
 │
-└── manage-sessions/          # Create/manage class sessions (CRUD)
+├── manage-sessions/          # Create/manage class sessions (CRUD)
+│   ├── __init__.py
+│   ├── lambda_function.py
+│   └── requirements.txt
+│
+├── upload-lecture-materials/ # Upload lecture materials (zip files) for sessions
+│   ├── __init__.py
+│   ├── lambda_function.py
+│   └── requirements.txt
+│
+└── get-lecture-materials/    # Get/download lecture materials for students
     ├── __init__.py
     ├── lambda_function.py
     └── requirements.txt
@@ -106,7 +116,7 @@ Processes student QR code scans to mark attendance
 **Notes:**
 - Prevents duplicate attendance for the same session
 - Validates QR code expiry
-- Sends SNS noti on success
+- Sends SNS notification on success with lecture material info (if available)
 
 ---
 
@@ -228,6 +238,7 @@ The following environment variables should be configured for each Lambda functio
 - `SESSIONS_TABLE` - DynamoDB table name for sessions (default: `sessions`)
 - `ATTENDANCE_TABLE` - DynamoDB table name for attendance (default: `attendance`)
 - `QR_CODE_BUCKET` - S3 bucket name for storing QR code images
+- `LECTURE_MATERIALS_BUCKET` - S3 bucket name for storing lecture materials (default: `qr-class-manager-lectures`)
 - `USER_POOL_ID` - Cognito User Pool ID
 - `COGNITO_CLIENT_ID` - Cognito App Client ID
 
@@ -245,6 +256,7 @@ The following environment variables should be configured for each Lambda functio
 ### Sessions Table
 - **Partition Key:** `session_id` (String)
 - **GSI:** `class_id-index` (Partition Key: `class_id`)
+- **Fields:** `lecture_material_url`, `lecture_material_key` (optional, for lecture materials)
 
 ### Attendance Table
 - **Partition Key:** `attendance_id` (String)
@@ -289,10 +301,13 @@ Cognito authentication helpers:
 S3 operations:
 - `get_presigned_url()` - Generate presigned URLs
 - `delete_object()` - Delete S3 objects
+- `upload_lecture_material()` - Upload lecture materials (zip files) to S3
+- `get_lecture_material_presigned_url()` - Get presigned URL for downloading lecture materials
+- `delete_lecture_material()` - Delete lecture materials from S3
 
 ### sns_utils.py
 SNS notifications:
-- `send_attendance_notification()` - Send attendance confirmation notifications
+- `send_attendance_notification()` - Send attendance confirmation notifications (includes lecture material info if available)
 - `send_bulk_notification()` - Send custom notifications
 
 ### models.py
@@ -320,6 +335,8 @@ All Lambda functions are designed to work with API Gateway REST API events. They
    - Professors can manage sessions, generate QR codes, and view all attendance
    - Students can only scan QR codes and view their own attendance
 
-4. **SNS Notifications:** Attendance confirmations are sent via SNS when students successfully mark attendance.
+4. **SNS Notifications:** Attendance confirmations are sent via SNS when students successfully mark attendance. The notification includes lecture material download information if materials are available for the session.
+
+5. **Lecture Materials:** Professors can upload zip files containing lecture materials for each session. When students scan QR codes for attendance, the SNS notification includes a presigned URL (valid for 24 hours) to download the materials. Students must have marked attendance before they can download materials.
 
 5. **Shared Code:** The `shared/` directory contains reusable utilities. When deploying, make sure the shared code is accessible to all Lambda functions (use Lambda Layers).

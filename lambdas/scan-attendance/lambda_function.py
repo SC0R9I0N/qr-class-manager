@@ -20,6 +20,7 @@ from dynamodb_utils import (
 )
 from auth_utils import get_user_from_event, require_student, get_user_id
 from sns_utils import send_attendance_notification
+from s3_utils import get_lecture_material_presigned_url
 
 
 def lambda_handler(event, context):
@@ -138,12 +139,26 @@ def lambda_handler(event, context):
                 'body': json.dumps({'error': 'failed to record attendance'})
             }
         
-        # send noti
+        # check if lecture materials are available and generate presigned URL
+        lecture_material_url = None
+        lecture_material_key = session.get('lecture_material_key')
+        
+        if lecture_material_key:
+            # generate presigned URL for lecture material (valid 24 hours)
+            lecture_material_url = get_lecture_material_presigned_url(
+                session_id=session_id,
+                key=lecture_material_key,
+                expiration=86400  # 24 hours
+            )
+        
+        # send noti with lecture material info
         send_attendance_notification(
             student_id=student_id,
             session_id=session_id,
             class_id=class_id,
-            message_type='attendance_confirmed'
+            message_type='attendance_confirmed',
+            lecture_material_url=lecture_material_url,
+            lecture_material_key=lecture_material_key
         )
         
         class_data = get_class(class_id)
