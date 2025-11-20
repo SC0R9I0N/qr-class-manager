@@ -61,6 +61,13 @@ class InfraStack(Stack):
             removal_policy=RemovalPolicy.DESTROY
         )
 
+        lecture_materials_bucket = s3.Bucket(
+            self, "LectureMaterialsBucket",
+            versioned=True,
+            auto_delete_objects=True,
+            removal_policy=RemovalPolicy.DESTROY
+        )
+
         # SNS Topic for attendance notifications
         attendance_topic = sns.Topic(self, "AttendanceTopic")
 
@@ -113,6 +120,7 @@ class InfraStack(Stack):
             "SESSIONS_TABLE": sessions_table.table_name,
             "ATTENDANCE_TABLE": attendance_table.table_name,
             "QR_CODE_BUCKET": qr_bucket.bucket_name,
+            "LECTURE_MATERIALS_BUCKET": lecture_materials_bucket.bucket_name,
             "USER_POOL_ID": user_pool.user_pool_id,
             "COGNITO_CLIENT_ID": user_pool_client.user_pool_client_id,
             "ATTENDANCE_TOPIC_ARN": attendance_topic.topic_arn,
@@ -152,6 +160,26 @@ class InfraStack(Stack):
             layers=[shared_layer]
         )
 
+        lambdas["upload_lecture_materials"] = PythonFunction(
+            self, "UploadLectureMaterialsLambda",
+            entry="../lambdas/upload-lecture-materials",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
+
+        lambdas["get_lecture_materials"] = PythonFunction(
+            self, "GetLectureMaterialsLambda",
+            entry="../lambdas/get-lecture-materials",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
+
         lambdas["generate_qr"] = create_lambda("GenerateQrLambda", "../lambdas/generate-qr")
         lambdas["scan_attendance"] = create_lambda("ScanAttendanceLambda", "../lambdas/scan-attendance")
         lambdas["get_attendance"] = create_lambda("GetAttendanceLambda", "../lambdas/get-attendance")
@@ -164,6 +192,10 @@ class InfraStack(Stack):
             attendance_table.grant_read_write_data(fn)
             qr_bucket.grant_read_write(fn)
             attendance_topic.grant_publish(fn)
+
+        # Grant S3 access for lecture materials
+        lecture_materials_bucket.grant_read_write(lambdas["upload_lecture_materials"])
+        lecture_materials_bucket.grant_read(lambdas["get_lecture_materials"])
 
         # API Gateway
         api = apigw.RestApi(self, "ClassBitsApi", rest_api_name="ClassBits Service")
@@ -223,6 +255,22 @@ class InfraStack(Stack):
         analytics.add_method(
             "GET",
             apigw.LambdaIntegration(lambdas["get_analytics"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
+
+        materials = api.root.add_resource("materials")
+
+        materials.add_method(
+            "POST",
+            apigw.LambdaIntegration(lambdas["upload_lecture_materials"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer
+        )
+
+        materials.add_method(
+            "GET",
+            apigw.LambdaIntegration(lambdas["get_lecture_materials"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
             authorizer=authorizer
         )
