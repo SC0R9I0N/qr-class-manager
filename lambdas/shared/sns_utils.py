@@ -3,6 +3,7 @@ import json
 import boto3
 from typing import Dict, Optional
 from botocore.exceptions import ClientError
+from datetime import datetime
 
 # init SNS client
 sns_client = boto3.client('sns')
@@ -10,13 +11,19 @@ ATTENDANCE_TOPIC_ARN = os.environ.get('ATTENDANCE_TOPIC_ARN', '')
 
 
 def send_attendance_notification(student_id: str, session_id: str, class_id: str, 
-                                 message_type: str = 'attendance_confirmed') -> bool:
+                                 message_type: str = 'attendance_confirmed',
+                                 lecture_material_url: Optional[str] = None,
+                                 lecture_material_key: Optional[str] = None) -> bool:
     """
+    Send attendance notification via SNS including lecture material info if available
+    
     Args:
         student_id: Student identifier
         session_id: Session identifier
         class_id: Class identifier
         message_type: Type of notification
+        lecture_material_url: Presigned URL for lecture material (optional)
+        lecture_material_key: S3 key for lecture material (optional)
     
     Returns:
         True if successful or False otherwise
@@ -31,7 +38,10 @@ def send_attendance_notification(student_id: str, session_id: str, class_id: str
             'student_id': student_id,
             'session_id': session_id,
             'class_id': class_id,
-            'timestamp': json.dumps({})
+            'timestamp': datetime.utcnow().isoformat(),
+            'has_lecture_materials': lecture_material_url is not None,
+            'lecture_material_url': lecture_material_url,
+            'lecture_material_key': lecture_material_key
         }
         
         response = sns_client.publish(

@@ -20,6 +20,8 @@ class Session:
     end_time: Optional[str] = None
     qr_code_url: Optional[str] = None
     qr_code_data: Optional[str] = None
+    lecture_material_url: Optional[str] = None
+    lecture_material_key: Optional[str] = None
     is_active: bool = True
     created_at: str = None
 
