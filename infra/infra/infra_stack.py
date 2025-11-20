@@ -8,6 +8,7 @@ from aws_cdk import (
     RemovalPolicy,
     aws_cognito as cognito
 )
+from aws_cdk.aws_lambda_python_alpha import PythonFunction, PythonLayerVersion
 from constructs import Construct
 
 class InfraStack(Stack):
@@ -118,10 +119,10 @@ class InfraStack(Stack):
             # "AWS_REGION": self.region
         }
 
-        # Shared Lambda Layer
-        shared_layer = _lambda.LayerVersion(
+        # Shared Lambda Layer (Uses PythonLayerVersion to bundle dependencies from requirements.txt)
+        shared_layer = PythonLayerVersion(
             self, "SharedLayer",
-            code=_lambda.Code.from_asset("../lambdas/shared"),
+            entry="../lambdas/shared",  # Directory containing your shared code AND requirements.txt
             compatible_runtimes=[_lambda.Runtime.PYTHON_3_11],
             description="Shared utilities for all Lambdas"
         )
@@ -131,7 +132,7 @@ class InfraStack(Stack):
             fn = _lambda.Function(
                 self, id,
                 runtime=_lambda.Runtime.PYTHON_3_11,
-                handler="lambda_function.handler",
+                handler="lambda_function.lambda_handler",
                 code=_lambda.Code.from_asset(path),
                 environment=env_vars,
                 layers=[shared_layer]
@@ -139,13 +140,22 @@ class InfraStack(Stack):
             return fn
 
         # Create Lambdas
-        lambdas = {
-            "generate_qr": create_lambda("GenerateQrLambda", "../lambdas/generate-qr"),
-            "scan_attendance": create_lambda("ScanAttendanceLambda", "../lambdas/scan-attendance"),
-            "get_attendance": create_lambda("GetAttendanceLambda", "../lambdas/get-attendance"),
-            "get_analytics": create_lambda("GetAnalyticsLambda", "../lambdas/get-analytics"),
-            "manage_sessions": create_lambda("ManageSessionsLambda", "../lambdas/manage-sessions")
-        }
+        lambdas ={}
+
+        lambdas["manage_sessions"] = PythonFunction(
+            self, "ManageSessionsLambda",
+            entry="../lambdas/manage-sessions",  # CDK will look for lambda_function.py and requirements.txt here
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
+
+        lambdas["generate_qr"] = create_lambda("GenerateQrLambda", "../lambdas/generate-qr")
+        lambdas["scan_attendance"] = create_lambda("ScanAttendanceLambda", "../lambdas/scan-attendance")
+        lambdas["get_attendance"] = create_lambda("GetAttendanceLambda", "../lambdas/get-attendance")
+        lambdas["get_analytics"] = create_lambda("GetAnalyticsLambda", "../lambdas/get-analytics")
 
         # Grant permissions
         for fn in lambdas.values():
