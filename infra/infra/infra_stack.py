@@ -264,10 +264,38 @@ class InfraStack(Stack):
         # API Gateway
         api = apigw.RestApi(self, "ClassBitsApi", rest_api_name="ClassBits Service")
 
+        def add_cors_options(resource: apigw.Resource):
+            resource.add_method(
+                "OPTIONS",
+                apigw.MockIntegration(
+                    integration_responses=[{
+                        "statusCode": "200",
+                        "responseParameters": {
+                            "method.response.header.Access-Control-Allow-Headers": "'Authorization,Content-Type'",
+                            "method.response.header.Access-Control-Allow-Origin": "'*'",
+                            "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,POST,PUT,DELETE'"
+                        }
+                    }],
+                    passthrough_behavior=apigw.PassthroughBehavior.NEVER,
+                    request_templates={"application/json": '{"statusCode": 200}'}
+                ),
+                method_responses=[{
+                    "statusCode": "200",
+                    "responseParameters": {
+                        "method.response.header.Access-Control-Allow-Headers": True,
+                        "method.response.header.Access-Control-Allow-Origin": True,
+                        "method.response.header.Access-Control-Allow-Methods": True
+                    }
+                }]
+            )
+
         # Routes
         sessions = api.root.add_resource("sessions")
+        add_cors_options(sessions)
         session_id = sessions.add_resource("{session_id}")
+        add_cors_options(session_id)
         qr_code = session_id.add_resource("qr-code")
+        add_cors_options(qr_code)
         qr_code.add_method(
             "POST",
             apigw.LambdaIntegration(lambdas["generate_qr"]),
@@ -301,6 +329,7 @@ class InfraStack(Stack):
         )
 
         attendance = api.root.add_resource("attendance")
+        add_cors_options(attendance)
         attendance.add_method(
             "GET",
             apigw.LambdaIntegration(lambdas["get_attendance"]),
@@ -308,6 +337,7 @@ class InfraStack(Stack):
             authorizer=authorizer
         )
         scan = attendance.add_resource("scan")
+        add_cors_options(scan)
         scan.add_method(
             "POST",
             apigw.LambdaIntegration(
@@ -318,6 +348,7 @@ class InfraStack(Stack):
         )
 
         analytics = api.root.add_resource("analytics")
+        add_cors_options(analytics)
         analytics.add_method(
             "GET",
             apigw.LambdaIntegration(lambdas["get_analytics"]),
@@ -326,6 +357,7 @@ class InfraStack(Stack):
         )
 
         materials = api.root.add_resource("materials")
+        add_cors_options(materials)
 
         materials.add_method(
             "POST",
