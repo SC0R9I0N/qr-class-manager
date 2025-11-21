@@ -1,0 +1,53 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install AWS CDK
+        run: npm install -g aws-cdk
+
+      - name: Run unit tests individually
+        run: |
+          pytest infra/tests/test_scan_attendance.py
+          pytest infra/tests/test_manage_sessions.py
+          pytest infra/tests/test_get_attendance.py
+          pytest infra/tests/test_get_analytics.py
+          pytest infra/tests/test_get_lecture_materials.py
+          pytest infra/tests/test_upload_lecture_materials.py
+          pytest infra/tests/test_qr_generator.py
+
+      - name: Deploy CDK stack
+        working-directory: infra
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          npm install
+          cdk deploy --require-approval never

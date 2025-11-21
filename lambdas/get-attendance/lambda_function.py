@@ -100,7 +100,7 @@ def lambda_handler(event, context):
                     # TODO would need a different query
                     # get all attendance for the class (would need a different query)
                     # for now return empty, might need a GSI for class_id in attendance table
-                    attendance_records = []
+                    attendance_records = dynamodb_utils.get_attendance_by_class(class_id)
                 
                 return {
                     'statusCode': 200,

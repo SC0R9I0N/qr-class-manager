@@ -150,14 +150,19 @@ def lambda_handler(event, context):
             # create session
             session_id = str(uuid.uuid4())
             created_at = datetime.utcnow().isoformat()
-            
+
+            # Generate and upload QR code
+            qr_result = qr_generator.generate_and_upload_qr_code(session_id, class_id)
+            qr_code_url = qr_result.get('qr_code_url')
+
             session_data = {
                 'session_id': session_id,
                 'class_id': class_id,
                 'session_date': session_date,
                 'start_time': start_time,
                 'end_time': end_time,
-                'is_active': False,  # QR code not generated yet
+                'is_active': bool(qr_code_url),  # QR code not generated yet
+                'qr_code_url': qr_code_url,
                 'created_at': created_at
             }
             

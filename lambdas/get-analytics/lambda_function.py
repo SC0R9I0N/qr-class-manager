@@ -15,7 +15,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 
 from dynamodb_utils import (
     get_attendance_by_session, get_sessions_by_class,
-    get_class, get_classes_by_professor, get_attendance_by_student
+    get_class, get_classes_by_professor, get_attendance_by_student, get_session
 )
 from auth_utils import get_user_from_event, require_professor, get_user_id
 

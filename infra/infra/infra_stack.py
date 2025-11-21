@@ -6,10 +6,14 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_sns as sns,
     RemovalPolicy,
-    aws_cognito as cognito
+    aws_cognito as cognito,
+    aws_iam as iam,
+    aws_cloudfront as cloudfront,
+    aws_cloudfront_origins as origins
 )
 from aws_cdk.aws_lambda_python_alpha import PythonFunction, PythonLayerVersion
 from constructs import Construct
+
 
 class InfraStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -45,7 +49,8 @@ class InfraStack(Stack):
             ("session_id-index", "session_id"),
             ("student_id-index", "student_id"),
             ("student_class-index", "student_id", "class_id"),
-            ("session_student-index", "session_id", "student_id")
+            ("session_student-index", "session_id", "student_id"),
+            ("class_id-index", "class_id")
         ]:
             attendance_table.add_global_secondary_index(
                 index_name=index[0],
@@ -55,10 +60,33 @@ class InfraStack(Stack):
 
         # S3 Bucket for QR codes
         qr_bucket = s3.Bucket(
-            self, "QrCodeBucket",
-            versioned=True,
+            self,
+            "QrCodeBucket",
+            removal_policy=RemovalPolicy.DESTROY,
             auto_delete_objects=True,
-            removal_policy=RemovalPolicy.DESTROY
+            block_public_access=s3.BlockPublicAccess(
+                block_public_acls=False,
+                block_public_policy=False,
+                ignore_public_acls=False,
+                restrict_public_buckets=False
+            )
+        )
+
+        qr_bucket.add_to_resource_policy(
+            iam.PolicyStatement(
+                actions=["s3:GetObject"],
+                resources=[f"{qr_bucket.bucket_arn}/qrcodes/*"],
+                principals=[iam.AnyPrincipal()]
+            )
+        )
+
+        qr_distribution = cloudfront.Distribution(
+            self,
+            "QrCodeDistribution",
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.S3Origin(qr_bucket),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            )
         )
 
         lecture_materials_bucket = s3.Bucket(
@@ -120,6 +148,7 @@ class InfraStack(Stack):
             "SESSIONS_TABLE": sessions_table.table_name,
             "ATTENDANCE_TABLE": attendance_table.table_name,
             "QR_CODE_BUCKET": qr_bucket.bucket_name,
+            "CLOUDFRONT_DOMAIN": qr_distribution.domain_name,
             "LECTURE_MATERIALS_BUCKET": lecture_materials_bucket.bucket_name,
             "USER_POOL_ID": user_pool.user_pool_id,
             "COGNITO_CLIENT_ID": user_pool_client.user_pool_client_id,
@@ -180,10 +209,45 @@ class InfraStack(Stack):
             layers=[shared_layer]
         )
 
-        lambdas["generate_qr"] = create_lambda("GenerateQrLambda", "../lambdas/generate-qr")
-        lambdas["scan_attendance"] = create_lambda("ScanAttendanceLambda", "../lambdas/scan-attendance")
-        lambdas["get_attendance"] = create_lambda("GetAttendanceLambda", "../lambdas/get-attendance")
-        lambdas["get_analytics"] = create_lambda("GetAnalyticsLambda", "../lambdas/get-analytics")
+        lambdas["generate_qr"] = PythonFunction(
+            self, "GenerateQrLambda",
+            entry="../lambdas/generate-qr",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
+
+        lambdas["scan_attendance"] = PythonFunction(
+            self, "ScanAttendanceLambda",
+            entry="../lambdas/scan-attendance",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
+
+        lambdas["get_attendance"] = PythonFunction(
+            self, "GetAttendanceLambda",
+            entry="../lambdas/get-attendance",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
+
+        lambdas["get_analytics"] = PythonFunction(
+            self, "GetAnalyticsLambda",
+            entry="../lambdas/get-analytics",
+            runtime=_lambda.Runtime.PYTHON_3_11,
+            index="lambda_function.py",
+            handler="lambda_handler",
+            environment=env_vars,
+            layers=[shared_layer]
+        )
 
         # Grant permissions
         for fn in lambdas.values():
@@ -246,7 +310,9 @@ class InfraStack(Stack):
         scan = attendance.add_resource("scan")
         scan.add_method(
             "POST",
-            apigw.LambdaIntegration(lambdas["scan_attendance"]),
+            apigw.LambdaIntegration(
+                lambdas["scan_attendance"]
+            ),
             authorization_type=apigw.AuthorizationType.COGNITO,
             authorizer=authorizer
         )
