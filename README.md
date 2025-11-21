@@ -155,7 +155,3 @@ curl -i -X GET https://7ql71igsye.execute-api.us-east-1.amazonaws.com/prod/atten
 ```
 
 Expected: `200 OK` with JSON response and CORS headers.
-
----
-
-Let me know if you'd like this bundled into a GitHub wiki page or paired with a Postman collection. You're ready for seamless frontend integration.
