@@ -1,42 +1,44 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import SessionCard from "../components/SessionCard";
+import { fetchSessions } from "../api/sessions";
+import type { Session } from "../api/sessions";
 
 const ClassPage: React.FC = () => {
-    const { id } = useParams();
+    const { id: classId } = useParams();
     const navigate = useNavigate();
+    const [sessions, setSessions] = useState<Session[]>([]);
 
-    // Placeholder class + sessions
-    const className = id === "class1" ? "Intro to Biology" : "Data Science 101";
-
-    const sessions = [
-        { id: "session1", date: "2024-09-12", presentCount: 28 },
-        { id: "session2", date: "2024-09-10", presentCount: 26 }
-    ];
+    useEffect(() => {
+        (async () => {
+            const allSessions = await fetchSessions();
+            // filter by class_id
+            const filtered = allSessions.filter(
+                (s) => s.class_id === classId
+            );
+            setSessions(filtered);
+        })();
+    }, [classId]);
 
     return (
         <div style={{ padding: 20 }}>
-            <h1>{className}</h1>
+            <h1>Class: {classId}</h1>
 
             <button
                 onClick={() => navigate("/upload")}
-                style={{
-                    padding: "10px 20px",
-                    marginBottom: 20,
-                    cursor: "pointer",
-                }}
+                style={{ padding: "10px 20px", marginBottom: 20, cursor: "pointer" }}
             >
                 Upload Resource
             </button>
 
             <h2>Sessions</h2>
 
-            {sessions.map(session => (
+            {sessions.map((session) => (
                 <SessionCard
-                    key={session.id}
-                    id={session.id}
+                    key={session.session_id}
+                    id={session.session_id}
                     date={session.date}
-                    presentCount={session.presentCount}
+                    presentCount={0 /* hook up later with attendance/analytics */}
                 />
             ))}
         </div>

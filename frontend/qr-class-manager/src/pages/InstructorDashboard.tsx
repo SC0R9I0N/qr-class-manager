@@ -1,20 +1,38 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { logoutUser } from "../api/auth";
+import { fetchAnalytics } from "../api/analytics";
+import type { ClassAnalytics } from "../api/analytics";
 import ClassCard from "../components/ClassCard";
 
 const InstructorDashboard: React.FC = () => {
     const navigate = useNavigate();
 
+    const [classes, setClasses] = useState<ClassAnalytics[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
     const handleLogout = () => {
-        logoutUser();            
-        navigate("/login");      
+        logoutUser();
+        navigate("/login");
     };
 
-    const classes = [
-        { id: "class1", name: "Intro to Biology", sessionCount: 12 },
-        { id: "class2", name: "Data Science 101", sessionCount: 8 }
-    ];
+    useEffect(() => {
+        const loadAnalytics = async () => {
+            try {
+                const data = await fetchAnalytics();   // GET /analytics
+                setClasses(data.classes);
+            } catch (e) {
+                const err = e as Error;
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadAnalytics();
+    }, []);
 
     return (
         <div style={{ padding: 20 }}>
@@ -34,16 +52,27 @@ const InstructorDashboard: React.FC = () => {
 
             <h1>Instructor Dashboard</h1>
 
-            <h2>Your Classes</h2>
+            {loading && <p>Loading analytics…</p>}
+            {error && <p style={{ color: "red" }}>Error: {error}</p>}
 
-            {classes.map((cls) => (
-                <ClassCard
-                    key={cls.id}
-                    id={cls.id}
-                    name={cls.name}
-                    sessionCount={cls.sessionCount}
-                />
-            ))}
+            {!loading && !error && (
+                <>
+                    <h2>Your Classes</h2>
+
+                    {classes.length === 0 && (
+                        <p>No classes found.</p>
+                    )}
+
+                    {classes.map((cls) => (
+                        <ClassCard
+                            key={cls.class_id}
+                            id={cls.class_id}
+                            name={cls.class_name}
+                            sessionCount={cls.total_sessions}
+                        />
+                    ))}
+                </>
+            )}
         </div>
     );
 };
