@@ -1,0 +1,148 @@
+.success-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    padding: 1rem;
+}
+
+.success-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+}
+
+.checkmark-circle {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 1.5rem;
+    animation: scaleIn 0.5s ease-out;
+}
+
+.checkmark {
+    color: white;
+    font-size: 3rem;
+    font-weight: bold;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+    }
+    to {
+        transform: scale(1);
+    }
+}
+
+.success-card h1 {
+    color: #11998e;
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+}
+
+.success-message {
+    color: #666;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+}
+
+.details-section {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-item:last-child {
+    border-bottom: none;
+}
+
+.detail-item .label {
+    color: #666;
+    font-weight: 500;
+}
+
+.detail-item .value {
+    color: #333;
+    font-weight: 600;
+}
+
+.download-section {
+    background-color: #fff8e1;
+    border: 2px solid #ffd54f;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.download-section h2 {
+    color: #f57c00;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+}
+
+.download-instruction {
+    color: #666;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.download-btn {
+    width: 100%;
+    padding: 0.875rem;
+    background: linear-gradient(135deg, #f57c00 0%, #ff9800 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.download-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(245, 124, 0, 0.4);
+}
+
+.download-btn:active {
+    transform: translateY(0);
+}
+
+.done-btn {
+    width: 100%;
+    padding: 0.875rem;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.done-btn:hover {
+    background: #d0d0d0;
+}
+
+.done-btn:active {
+    background: #c0c0c0;
+}
