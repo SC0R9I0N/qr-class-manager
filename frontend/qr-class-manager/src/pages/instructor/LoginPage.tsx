@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../api/auth";
+import { loginUser } from "../../api/auth";
+import "./LoginPage.css";
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -25,45 +26,50 @@ const LoginPage: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: 20 }}>
-            <h1>Login</h1>
+        <div className="instructor-login-container">
+            
 
-            <div style={{ marginTop: 20 }}>
+            <div className="login-card">
+                <h1>ClassBits</h1>
+                <h2>Instructor Login</h2>
+                <div className="form-group">
+                <label htmlFor="email">Email Address</label>
                 <input
+                    id="email"
                     type="email"
-                    placeholder="Email"
+                    placeholder="instructor1@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={{ padding: 8, width: 250, marginBottom: 10 }}
                 />
-                <br />
+                </div>
 
+                <div className="form-group">
+                    <label htmlFor="password">Enter Password</label>
                 <input
+                    id="password"
                     type="password"
-                    placeholder="Password"
+                    placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{ padding: 8, width: 250, marginBottom: 10 }}
                 />
-                <br />
+                </div>
 
                 <button
                     onClick={handleLogin}
-                    style={{ padding: "8px 16px", cursor: "pointer" }}
+                    className="login-btn"
                 >
                     Login
                 </button>
 
-                
-                <p style={{ marginTop: 15 }}>
-                    Don't have an account?{" "}
+                <div className="register-group">
+                    <label htmlFor="register">Don't have an account?</label>
                     <span
+                        className="register"
                         onClick={() => navigate("/register")}
-                        style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
                     >
                         Register
                     </span>
-                </p>
+                </div>
             </div>
         </div>
     );
