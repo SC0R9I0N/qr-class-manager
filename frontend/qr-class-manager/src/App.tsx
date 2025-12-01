@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Instructor Pages (Authenticated with Cognito)
 import LoginPage from "./pages/instructor/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
+import RegisterPage from "./pages/instructor/RegisterPage";
 import ConfirmPage from "./pages/ConfirmPage";
 import LogoutPage from "./pages/LogoutPage";
 import InstructorDashboard from "./pages/InstructorDashboard";

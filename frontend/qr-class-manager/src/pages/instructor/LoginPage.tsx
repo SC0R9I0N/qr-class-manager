@@ -33,30 +33,30 @@ const LoginPage: React.FC = () => {
                 <h1>ClassBits</h1>
                 <h2>Instructor Login</h2>
                 <div className="form-group">
-                <label htmlFor="email">Email Address</label>
-                <input
-                    id="email"
-                    type="email"
-                    placeholder="instructor1@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                />
+                    <label htmlFor="email">Email Address</label>
+                    <input
+                        id="email"
+                        type="email"
+                        placeholder="instructor1@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
                 </div>
 
                 <div className="form-group">
                     <label htmlFor="password">Enter Password</label>
-                <input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                />
+                    <input
+                        id="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
                 </div>
 
                 <button
-                    onClick={handleLogin}
                     className="login-btn"
+                    onClick={handleLogin}
                 >
                     Login
                 </button>
