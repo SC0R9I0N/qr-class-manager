@@ -1,0 +1,21 @@
+.session-card {
+    border: 1px solid #000000;
+    padding: 16;
+    margin-bottom: 12px;
+    cursor: pointer;
+    border-radius: 12px;
+}
+
+.session-card h3 {
+    cursor: default;
+    color: #333;
+    margin: 0.5rem;
+    font-size: 1.2rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.session-card p {
+    color: #000000;
+    margin-left: .5rem;
+}

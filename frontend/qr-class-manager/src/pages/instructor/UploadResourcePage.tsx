@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { uploadMaterialsZip } from "../api/materials";
+import { uploadMaterialsZip } from "../../api/materials";
+import "./UploadResourcePage.css"
 
 const UploadResourcePage: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
@@ -31,17 +32,19 @@ const UploadResourcePage: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: 20 }}>
-            <h1>Upload Course Materials</h1>
+        <div className="upload-container">
+            <div className="upload-card">
+                <h1>Upload Course Materials</h1>
 
-            <input type="file" accept=".zip" onChange={handleFileChange} />
-            <br /><br />
+                <input className="file-input"type="file" accept=".zip" onChange={handleFileChange}/>
 
-            <button onClick={handleUpload} style={{ padding: "8px 16px" }}>
-                Upload
-            </button>
-
-            {status && <p style={{ marginTop: 10 }}>{status}</p>}
+                <button 
+                    className="upload-class-btn"
+                    onClick={handleUpload}>
+                    Upload
+                </button>
+                {status}
+            </div>
         </div>
     );
 };

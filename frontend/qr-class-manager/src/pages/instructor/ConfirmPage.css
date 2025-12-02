@@ -1,4 +1,4 @@
-.instructor-register-container {
+.instructor-confirm-container {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -8,7 +8,7 @@
     padding: 1rem;
 }
 
-.register-card {
+.intsructor-confirm-card {
     background: white;
     border-radius: 12px;
     padding: 2.5rem;
@@ -17,7 +17,7 @@
     width: 100%;
 }
 
-.register-card h1 {
+.intsructor-confirm-card h1 {
     cursor: default;
     color: #667eea;
     margin: 0 0 0.5rem 0;
@@ -25,42 +25,7 @@
     text-align: center;
 }
 
-.register-card h2 {
-    cursor: default;
-    color: #333;
-    margin: 0 0 0.5rem 0;
-    font-size: 1.5rem;
-    text-align: center;
-}
-
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    color: #333;
-    font-weight: 500;
-    font-size: 0.95rem;
-}
-
-.form-group input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 2px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: border-color 0.3s;
-    box-sizing: border-box;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.register-btn {
+.confirm-verification-btn {
     width: 100%;
     padding: 0.875rem;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -73,11 +38,11 @@
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.register-btn:hover {
+.confirm-verification-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
-.register-btn:active {
+.confirm-verification-btn:active {
     transform: translateY(0);
 }

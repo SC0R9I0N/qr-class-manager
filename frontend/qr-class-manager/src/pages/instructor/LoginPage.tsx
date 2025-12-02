@@ -27,8 +27,6 @@ const LoginPage: React.FC = () => {
 
     return (
         <div className="instructor-login-container">
-            
-
             <div className="login-card">
                 <h1>ClassBits</h1>
                 <h2>Instructor Login</h2>

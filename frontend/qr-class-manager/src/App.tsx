@@ -4,12 +4,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 // Instructor Pages (Authenticated with Cognito)
 import LoginPage from "./pages/instructor/LoginPage";
 import RegisterPage from "./pages/instructor/RegisterPage";
-import ConfirmPage from "./pages/ConfirmPage";
-import LogoutPage from "./pages/LogoutPage";
-import InstructorDashboard from "./pages/InstructorDashboard";
-import ClassPage from "./pages/ClassPage";
-import SessionPage from "./pages/SessionPage";
-import UploadResourcePage from "./pages/UploadResourcePage";
+import ConfirmPage from "./pages/instructor/ConfirmPage";
+import LogoutPage from "./pages/instructor/LogoutPage";
+import InstructorDashboard from "./pages/instructor/InstructorDashboard";
+import ClassPage from "./pages/instructor/ClassPage";
+import SessionPage from "./pages/instructor/SessionPage";
+import UploadResourcePage from "./pages/instructor/UploadResourcePage";
 
 // Student Pages (Pseudo-authentication only)
 import StudentAttendancePage from "./pages/student/StudentAttendancePage";
