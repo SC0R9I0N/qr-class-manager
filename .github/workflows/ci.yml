@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: '20'
 
-      # 🟢 STEP 1: AWS AUTHENTICATION
+      # STEP 1: AWS AUTHENTICATION
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -32,7 +32,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # 🟢 STEP 2: RUN UNIT TESTS (Pytest)
+      # STEP 2: RUN UNIT TESTS (Pytest)
       - name: Install Python dependencies
         working-directory: infra
         run: |
@@ -49,9 +49,9 @@ jobs:
           pytest infra/tests/test_upload_lecture_materials.py
           pytest infra/tests/test_qr_generator.py
 
-      # 🟢 STEP 3: BUILD FRONTEND (Vite)
+      # STEP 3: BUILD FRONTEND (Vite)
       - name: Build React Frontend
-        working-directory: ./frontend
+        working-directory: ./frontend/qr-class-manager
         run: |
           npm install
           npm run build
@@ -61,7 +61,7 @@ jobs:
           VITE_USER_POOL_ID: ${{ secrets.VITE_USER_POOL_ID }}
           VITE_CLIENT_ID: ${{ secrets.VITE_CLIENT_ID }}
 
-      # 🟢 STEP 4: DEPLOY INFRASTRUCTURE (CDK)
+      # STEP 4: DEPLOY INFRASTRUCTURE (CDK)
       - name: Install AWS CDK
         run: npm install -g aws-cdk
 
@@ -69,13 +69,13 @@ jobs:
         working-directory: infra
         run: cdk deploy --require-approval never
 
-      # 🟢 STEP 5: SYNC BUILD TO S3
+      # STEP 5: SYNC BUILD TO S3
       - name: Sync dist to S3
         run: |
           # Matches your 'dist' folder logic from 'npm run build'
           aws s3 sync ./frontend/dist s3://${{ secrets.FRONTEND_BUCKET_NAME }} --delete
 
-      # 🟢 STEP 6: INVALIDATE CLOUDFRONT CACHE
+      # STEP 6: INVALIDATE CLOUDFRONT CACHE
       - name: Invalidate CloudFront Cache
         run: |
           # Clears global edge locations so changes are live instantly
