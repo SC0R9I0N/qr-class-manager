@@ -135,6 +135,23 @@ def get_attendance_by_session(session_id: str) -> List[Dict]:
         print(f"Error querying attendance: {e}")
         return []
 
+def get_attendance_count_by_session(session_id: str) -> int:
+    """
+    Queries the Attendance table by session_id and returns the total count of records.
+    """
+    table = get_table(ATTENDANCE_TABLE)
+    try:
+        response = table.query(
+            IndexName='session_id-index',
+            KeyConditionExpression='session_id = :sid',
+            ExpressionAttributeValues={':sid': session_id},
+            Select='COUNT'  # Tells DynamoDB to return only the count
+        )
+        return response.get('Count', 0)
+    except ClientError as e:
+        print(f"Error getting attendance count: {e}")
+        return 0
+
 
 def get_attendance_by_student(student_id: str, class_id: Optional[str] = None) -> List[Dict]:
     table = get_table(ATTENDANCE_TABLE)

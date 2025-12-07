@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import StudentLoginForm from "../../components/student/StudentLoginForm";
 import QRScanner from "../../components/student/QRScanner";
 import AttendanceSuccess from "../../components/student/AttendanceSuccess";
+import { getValidIdToken } from "../../api/auth";
 
 interface StudentInfo {
     name: string;
@@ -11,8 +12,10 @@ interface StudentInfo {
 
 interface AttendanceResult {
     className: string;
+    classId: string;
     sessionDate: string;
     downloadUrl?: string;
+    message?: string;
 }
 
 const StudentAttendancePage: React.FC = () => {
@@ -23,8 +26,11 @@ const StudentAttendancePage: React.FC = () => {
     const [error, setError] = useState("");
 
     const handleLogin = (name: string, email: string, idToken: string) => {
-        setStudentInfo({ name, email, idToken });
-        setStep("scan");
+      // Store the token for later API calls
+      localStorage.setItem("idToken", idToken);
+
+      setStudentInfo({ name, email, idToken });
+      setStep("scan");
     };
 
     const handleScanSuccess = async (qrData: string) => {
@@ -32,66 +38,86 @@ const StudentAttendancePage: React.FC = () => {
         setError("");
 
         try {
-            // Parse QR code data
-            const qrCodeData = JSON.parse(qrData);
+            const token = await getValidIdToken();
+            if (!token) throw new Error("Session expired, please log in again");
 
-            // DEVELOPMENT MODE: Use mock data if API fails
-            // Set to false when backend is ready
-            const USE_MOCK_DATA = true;
-
-            if (USE_MOCK_DATA) {
-                // Simulate API delay
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Mock successful response
-                setAttendanceResult({
-                    className: "Computer Science 101",
-                    sessionDate: new Date().toLocaleDateString(),
-                    downloadUrl: undefined, // Set to a URL when testing download
-                });
-
-                setStep("success");
-                return;
-            }
+            // --- Simplified QR Data Preparation ---
+            // 1. Parse into object for validation
+            const qrObject = JSON.parse(qrData.trim());
+            // 2. Stringify back into string (necessary for correct escaping in body)
+            const qrCodeData = JSON.stringify(qrObject);
 
             // PRODUCTION MODE: Call real API
-            // According to README.md, the API endpoint is:
-            // POST /attendance/scan
             const response = await fetch(
-                "https://7ql71igsye.execute-api.us-east-1.amazonaws.com/prod/attendance/scan",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${studentInfo?.idToken}`,
-                    },
-                    body: JSON.stringify({
-                        qr_code_data: qrData,
-                        student_name: studentInfo?.name,
-                        student_email: studentInfo?.email,
-                    }),
-                }
+              "https://7ql71igsye.execute-api.us-east-1.amazonaws.com/prod/attendance/scan",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    qr_code_data: qrCodeData,
+                    location: "web client",
+                    device_info: navigator.userAgent,
+                }),
+              }
             );
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || "Failed to mark attendance");
-            }
+            const raw = await response.text();
+            console.log("Attendance API status:", response.status);
+            console.log("Attendance API raw response:", raw);
 
-            const result = await response.json();
+            let result;
+            let finalMessage: string | undefined;
+
+            if (response.status === 409) {
+                // Attendance already recorded
+                try {
+                    const errorData = JSON.parse(raw);
+                    finalMessage = errorData.message || "Attendance already recorded for this session.";
+
+                    // We must generate a minimal result structure for the success screen
+                    result = {
+                        class_name: "Class",
+                        scan_timestamp: new Date().toISOString(), // Fallback timestamp
+                        message: finalMessage
+                    };
+                } catch {
+                    throw new Error("Conflict (409) received, but response body was unreadable.");
+                }
+
+            } else if (!response.ok) {
+                // Handle all other HTTP errors (400, 401, 500, etc.)
+                let msg = "Failed to mark attendance";
+                try {
+                    const errJson = JSON.parse(raw);
+                    msg = errJson.message || msg;
+                } catch {
+                    msg = raw || msg;
+                }
+                throw new Error(msg);
+            } else {
+                // HTTP 200 OK (Successful new attendance record)
+                result = JSON.parse(raw);
+                finalMessage = result.message;
+            }
 
             // Store attendance result
             setAttendanceResult({
                 className: result.class_name || "Class",
+                classId: result.class_id,
                 sessionDate: new Date(result.scan_timestamp).toLocaleDateString(),
-                downloadUrl: result.download_url, // If materials are available
+                downloadUrl: result.download_url,
+                message: finalMessage, // Pass the specific message to the success screen
             });
 
             setStep("success");
+
         } catch (err) {
             // Better error messages
             let errorMessage = "An error occurred";
-            
+
             if (err instanceof Error) {
                 if (err.message.includes("Failed to fetch")) {
                     errorMessage = "Cannot connect to server. Please check if the backend is running or set USE_MOCK_DATA to true for testing.";
@@ -99,7 +125,7 @@ const StudentAttendancePage: React.FC = () => {
                     errorMessage = err.message;
                 }
             }
-            
+
             setError(errorMessage);
             console.error("Attendance error:", err);
         } finally {
@@ -185,6 +211,7 @@ const StudentAttendancePage: React.FC = () => {
                 <AttendanceSuccess
                     studentName={studentInfo.name}
                     className={attendanceResult.className}
+                    classId={attendanceResult.classId}
                     sessionDate={attendanceResult.sessionDate}
                     downloadUrl={attendanceResult.downloadUrl}
                 />

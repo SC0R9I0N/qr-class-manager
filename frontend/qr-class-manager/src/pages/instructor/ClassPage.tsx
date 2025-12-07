@@ -12,12 +12,14 @@ const ClassPage: React.FC = () => {
 
     useEffect(() => {
         (async () => {
-            const allSessions = await fetchSessions();
-            // filter by class_id
-            const filtered = allSessions.filter(
-                (s) => s.class_id === classId
-            );
-            setSessions(filtered);
+            if (classId) {
+                // 1. fetchSessions now passes classId to the backend
+                // 2. fetchSessions now returns only the array of sessions
+                const sessions = await fetchSessions(classId);
+
+                // 3. Remove client-side filtering
+                setSessions(sessions);
+            }
         })();
     }, [classId]);
 
@@ -41,7 +43,7 @@ const ClassPage: React.FC = () => {
                             key={session.session_id}
                             id={session.session_id}
                             date={session.date}
-                            presentCount={0 /* hook up later with attendance/analytics */}
+                            presentCount={session.attendance_count}
                         />
                     ))}
                 </div>

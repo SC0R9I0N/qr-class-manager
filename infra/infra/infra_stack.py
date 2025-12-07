@@ -1,5 +1,6 @@
 from aws_cdk import (
     Stack,
+    Duration,
     aws_lambda as _lambda,
     aws_apigateway as apigw,
     aws_dynamodb as ddb,
@@ -13,6 +14,51 @@ from aws_cdk import (
 )
 from aws_cdk.aws_lambda_python_alpha import PythonFunction, PythonLayerVersion
 from constructs import Construct
+
+
+# UTILITY FUNCTION: Guaranteed Integration Response with CORS
+def create_cors_integration_response():
+    # Defines the response from the Integration (Lambda) to the Method (API Gateway)
+    # This explicitly maps the necessary CORS headers and ensures the Lambda body is passed through.
+    return [
+        apigw.IntegrationResponse(
+            status_code="200",
+            response_parameters={
+                # Hardcoded values for universal CORS success
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers":
+                    "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                "method.response.header.Access-Control-Allow-Methods":
+                    "'OPTIONS,GET,PUT,POST,DELETE'",
+            },
+            # Map the response body from the Lambda output
+            response_templates={
+                "application/json": "$input.json('$')"
+            }
+        )
+    ]
+
+
+# UTILITY FUNCTION: Guaranteed Method Response for CORS headers
+# Defines the parameters required on the API Gateway Method Response
+cors_method_response = {
+    "statusCode": "200",
+    "responseParameters": {
+        # Must be set to True to instruct API Gateway to include them in the response
+        "method.response.header.Access-Control-Allow-Origin": True,
+        "method.response.header.Access-Control-Allow-Headers": True,
+        "method.response.header.Access-Control-Allow-Methods": True,
+    }
+}
+
+
+# UTILITY FUNCTION: Lambda Integration Helper
+def create_lambda_integration(lambda_fn):
+    # Combines the Lambda function with the explicit CORS Integration Responses
+    return apigw.LambdaIntegration(
+        handler=lambda_fn,
+        integration_responses=create_cors_integration_response()
+    )
 
 
 class InfraStack(Stack):
@@ -177,7 +223,7 @@ class InfraStack(Stack):
             return fn
 
         # Create Lambdas
-        lambdas ={}
+        lambdas = {}
 
         lambdas["manage_sessions"] = PythonFunction(
             self, "ManageSessionsLambda",
@@ -196,7 +242,17 @@ class InfraStack(Stack):
             index="lambda_function.py",
             handler="lambda_handler",
             environment=env_vars,
-            layers=[shared_layer]
+            layers=[shared_layer],
+            # Boost memory and timeout for Base64/ZIP processing
+            memory_size=512,
+            timeout=Duration.seconds(30)
+        )
+
+        lambdas["upload_lecture_materials"].add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["cognito-idp:AdminGetUser", "cognito-idp:AdminListGroupsForUser"],
+                resources=[user_pool.user_pool_arn]
+            )
         )
 
         lambdas["get_lecture_materials"] = PythonFunction(
@@ -239,6 +295,13 @@ class InfraStack(Stack):
             layers=[shared_layer]
         )
 
+        lambdas["get_attendance"].add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["cognito-idp:AdminGetUser"],
+                resources=[user_pool.user_pool_arn]
+            )
+        )
+
         lambdas["get_analytics"] = PythonFunction(
             self, "GetAnalyticsLambda",
             entry="../lambdas/get-analytics",
@@ -260,115 +323,151 @@ class InfraStack(Stack):
         # Grant S3 access for lecture materials
         lecture_materials_bucket.grant_read_write(lambdas["upload_lecture_materials"])
         lecture_materials_bucket.grant_read(lambdas["get_lecture_materials"])
+        lecture_materials_bucket.grant_read(lambdas["scan_attendance"])
+
+        # ------------------------------------------------------------
+        # FRONTEND HOSTING: S3 Bucket + CloudFront Distribution
+        # ------------------------------------------------------------
+
+        # 1. Bucket to hold the built React files (dist folder)
+        frontend_bucket = s3.Bucket(
+            self, "FrontendBucket",
+            website_index_document="index.html",
+            website_error_document="index.html",  # Critical for React Router deep links
+            block_public_access=s3.BlockPublicAccess(
+                block_public_acls=False,
+                block_public_policy=False,
+                ignore_public_acls=False,
+                restrict_public_buckets=False,
+            ),
+            public_read_access=True,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True
+        )
+
+        # 2. Distribution to serve the frontend over HTTPS
+        frontend_distribution = cloudfront.Distribution(
+            self, "FrontendDistribution",
+            default_behavior=cloudfront.BehaviorOptions(
+                origin=origins.S3Origin(frontend_bucket),
+                viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+            )
+        )
+
+        # Output the URL so you can retrieve the CloudFront link after deployment
+        self.frontend_url = frontend_distribution.distribution_domain_name
 
         # API Gateway
-        api = apigw.RestApi(self, "ClassBitsApi", rest_api_name="ClassBits Service")
+        api = apigw.RestApi(
+            self, "ClassBitsApi",
+            rest_api_name="ClassBits Service",
+            # 1. KEEP THE GLOBAL CORS SETTING for the OPTIONS preflight method
+            default_cors_preflight_options={
+                "allow_origins": apigw.Cors.ALL_ORIGINS,
+                "allow_methods": apigw.Cors.ALL_METHODS,
+                "allow_headers": ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key", "X-Amz-Security-Token"],
+            }
+        )
 
-        def add_cors_options(resource: apigw.Resource):
-            resource.add_method(
-                "OPTIONS",
-                apigw.MockIntegration(
-                    integration_responses=[{
-                        "statusCode": "200",
-                        "responseParameters": {
-                            "method.response.header.Access-Control-Allow-Headers": "'Authorization,Content-Type'",
-                            "method.response.header.Access-Control-Allow-Origin": "'*'",
-                            "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,POST,PUT,DELETE'"
-                        }
-                    }],
-                    passthrough_behavior=apigw.PassthroughBehavior.NEVER,
-                    request_templates={"application/json": '{"statusCode": 200}'}
-                ),
-                method_responses=[{
-                    "statusCode": "200",
-                    "responseParameters": {
-                        "method.response.header.Access-Control-Allow-Headers": True,
-                        "method.response.header.Access-Control-Allow-Origin": True,
-                        "method.response.header.Access-Control-Allow-Methods": True
-                    }
-                }]
-            )
+        # 2. APPLY FIX TO ALL METHOD INTEGRATIONS
 
         # Routes
         sessions = api.root.add_resource("sessions")
-        add_cors_options(sessions)
+
         session_id = sessions.add_resource("{session_id}")
-        add_cors_options(session_id)
-        qr_code = session_id.add_resource("qr-code")
-        add_cors_options(qr_code)
+
+        qr_code = session_id.add_resource("generate-qr")
+
         qr_code.add_method(
             "POST",
-            apigw.LambdaIntegration(lambdas["generate_qr"]),
+            create_lambda_integration(lambdas["generate_qr"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
+        )
+
+        session_id.add_method(
+            "GET",
+            create_lambda_integration(lambdas["manage_sessions"]),
+            authorization_type=apigw.AuthorizationType.COGNITO,
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
 
         sessions.add_method(
             "GET",
-            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            create_lambda_integration(lambdas["manage_sessions"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
         sessions.add_method(
             "POST",
-            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            create_lambda_integration(lambdas["manage_sessions"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
         sessions.add_method(
             "PUT",
-            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            create_lambda_integration(lambdas["manage_sessions"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
         sessions.add_method(
             "DELETE",
-            apigw.LambdaIntegration(lambdas["manage_sessions"]),
+            create_lambda_integration(lambdas["manage_sessions"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
 
         attendance = api.root.add_resource("attendance")
-        add_cors_options(attendance)
+
         attendance.add_method(
             "GET",
-            apigw.LambdaIntegration(lambdas["get_attendance"]),
+            create_lambda_integration(lambdas["get_attendance"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
         scan = attendance.add_resource("scan")
-        add_cors_options(scan)
+
         scan.add_method(
             "POST",
-            apigw.LambdaIntegration(
+            create_lambda_integration(
                 lambdas["scan_attendance"]
             ),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
 
         analytics = api.root.add_resource("analytics")
-        add_cors_options(analytics)
+
         analytics.add_method(
             "GET",
-            apigw.LambdaIntegration(lambdas["get_analytics"]),
+            create_lambda_integration(lambdas["get_analytics"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
 
         materials = api.root.add_resource("materials")
-        add_cors_options(materials)
 
         materials.add_method(
             "POST",
-            apigw.LambdaIntegration(lambdas["upload_lecture_materials"]),
+            create_lambda_integration(lambdas["upload_lecture_materials"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )
 
         materials.add_method(
             "GET",
-            apigw.LambdaIntegration(lambdas["get_lecture_materials"]),
+            create_lambda_integration(lambdas["get_lecture_materials"]),
             authorization_type=apigw.AuthorizationType.COGNITO,
-            authorizer=authorizer
+            authorizer=authorizer,
+            method_responses=[cors_method_response]
         )

@@ -4,8 +4,10 @@ import "./AttendanceSuccess.css";
 interface AttendanceSuccessProps {
     studentName: string;
     className: string;
+    classId: string;
     sessionDate: string;
     downloadUrl?: string;
+    message?: string;
     onDownload?: () => void;
 }
 
@@ -22,12 +24,12 @@ const AttendanceSuccess: React.FC<AttendanceSuccessProps> = ({
                 <div className="checkmark-circle">
                     <div className="checkmark">✓</div>
                 </div>
-                
+
                 <h1>Attendance Recorded!</h1>
                 <p className="success-message">
                     Your attendance has been successfully marked.
                 </p>
-                
+
                 <div className="details-section">
                     <div className="detail-item">
                         <span className="label">Student:</span>
@@ -42,23 +44,23 @@ const AttendanceSuccess: React.FC<AttendanceSuccessProps> = ({
                         <span className="value">{sessionDate}</span>
                     </div>
                 </div>
-                
+
                 {downloadUrl && (
                     <div className="download-section">
                         <h2>Lecture Materials Available</h2>
                         <p className="download-instruction">
                             Download today's lecture materials below:
                         </p>
-                        <button 
+                        <button
                             className="download-btn"
                             onClick={onDownload || (() => window.open(downloadUrl, '_blank'))}
                         >
-                            📥 Download Materials
+                            Download Materials
                         </button>
                     </div>
                 )}
-                
-                <button 
+
+                <button
                     className="done-btn"
                     onClick={() => window.location.reload()}
                 >

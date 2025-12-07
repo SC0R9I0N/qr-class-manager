@@ -1,6 +1,9 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+// Landing Page (determine route to Instructor or Student login)
+import LandingPage from "./pages/LandingPage.tsx";
+
 // Instructor Pages (Authenticated with Cognito)
 import LoginPage from "./pages/instructor/LoginPage";
 import RegisterPage from "./pages/instructor/RegisterPage";
@@ -13,15 +16,19 @@ import UploadResourcePage from "./pages/instructor/UploadResourcePage";
 
 // Student Pages (Pseudo-authentication only)
 import StudentAttendancePage from "./pages/student/StudentAttendancePage";
+import StudentRegisterPage from "./pages/student/StudentRegisterPage";
+import StudentConfirmPage from "./pages/student/StudentConfirmPage";
 
 const App: React.FC = () => {
     return (
         <BrowserRouter>
             <Routes>
                 {/* Student Routes - No Cognito Auth Required */}
-                <Route path="/" element={<StudentAttendancePage />} />
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/student" element={<StudentAttendancePage />} />
                 <Route path="/attendance" element={<StudentAttendancePage />} />
+                <Route path="/student/register" element={<StudentRegisterPage />} />
+                <Route path="/student/confirm" element={<StudentConfirmPage />} />
 
                 {/* Instructor Routes - Cognito Auth Required */}
                 <Route path="/instructor/login" element={<LoginPage />} />

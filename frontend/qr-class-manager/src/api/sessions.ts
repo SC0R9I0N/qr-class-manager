@@ -6,6 +6,7 @@ export interface Session {
     title: string;
     date: string;      // ISO string
     is_active?: boolean;
+    attendance_count: number;
 }
 
 export interface CreateSessionInput {
@@ -14,11 +15,21 @@ export interface CreateSessionInput {
     date: string;
 }
 
-export function fetchSessions(): Promise<Session[]> {
-    return apiGet<Session[]>("/sessions");
+export async function fetchSessions(classId: string): Promise<Session[]> {
+    // apiGet likely returns the full JSON object: { class_id, sessions, count }
+    const responseData = await apiGet<any>(`/sessions?class_id=${classId}`);
+
+    // Check if the response contains the 'sessions' array
+    if (responseData && Array.isArray(responseData.sessions)) {
+        return responseData.sessions as Session[];
+    }
+
+    // Return an empty array if the expected structure isn't found
+    return [];
 }
 
 export function fetchSession(sessionId: string): Promise<Session> {
+    // This call returns a single session object, not wrapped in a list
     return apiGet<Session>(`/sessions/${sessionId}`);
 }
 
@@ -35,4 +46,21 @@ export function updateSession(
 
 export function deleteSession(sessionId: string): Promise<{ success: boolean }> {
     return apiDelete<{ success: boolean }>(`/sessions/${sessionId}`);
+}
+
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
+export async function generateSessionQRCode(classId: string) {
+  const token = localStorage.getItem("idToken");
+  console.log("Using token:", token);
+  const response = await fetch(`${baseUrl}/sessions/${classId}/generate-qr`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+  console.log("Raw response:", response);
+  if (!response.ok) throw new Error("Failed to generate QR code");
+  return response.json();
 }

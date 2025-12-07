@@ -22,8 +22,8 @@ const QRScanner: React.FC<QRScannerProps> = ({
         if (useCamera && !scanner) {
             const qrScanner = new Html5QrcodeScanner(
                 "qr-reader",
-                { 
-                    fps: 10, 
+                {
+                    fps: 10,
                     qrbox: { width: 250, height: 250 },
                     aspectRatio: 1.0
                 },
@@ -31,16 +31,16 @@ const QRScanner: React.FC<QRScannerProps> = ({
             );
 
             qrScanner.render(
-                (decodedText) => {
-                    try {
-                        // Validate that it's valid JSON
-                        JSON.parse(decodedText);
-                        qrScanner.clear();
-                        onScanSuccess(decodedText);
-                    } catch {
-                        setError("Invalid QR code format. Please scan a valid attendance QR code.");
-                    }
-                },
+              (decodedText) => {
+                const sanitized = decodedText.trim();
+                try {
+                  JSON.parse(sanitized); // optional validation
+                } catch (err) {
+                  console.warn("Camera scan parse failed, sending raw string anyway:", err);
+                }
+                qrScanner.clear();
+                onScanSuccess(sanitized);
+              },
                 (errorMessage) => {
                     // Ignore continuous scanning errors (normal operation)
                     // Only log actual issues
@@ -63,20 +63,22 @@ const QRScanner: React.FC<QRScannerProps> = ({
     }, [useCamera, scanner, onScanSuccess]);
 
     const handleManualSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        
-        if (!qrInput.trim()) {
-            setError("Please enter QR code data");
-            return;
-        }
+      e.preventDefault();
 
-        try {
-            // Validate that it's valid JSON
-            JSON.parse(qrInput);
-            onScanSuccess(qrInput);
-        } catch {
-            setError("Invalid QR code data format");
-        }
+      if (!qrInput.trim()) {
+        setError("Please enter QR code data");
+        return;
+      }
+
+      const sanitized = qrInput.trim();
+      try {
+        JSON.parse(sanitized); // optional validation
+      } catch (err) {
+        console.warn("Manual parse failed, sending raw string anyway:", err);
+      }
+
+      onScanSuccess(sanitized);
+      setError(""); // clear error
     };
 
     const toggleMode = () => {

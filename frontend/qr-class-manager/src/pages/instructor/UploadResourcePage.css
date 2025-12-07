@@ -51,3 +51,33 @@
 .upload-btn:active {
     transform: translateY(0);
 }
+
+.upload-class-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.upload-class-btn:active {
+    transform: translateY(0);
+}
+
+/* 🟢 New Status Feedback Styles */
+.status-msg {
+    margin-top: 1.5rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.status-msg.success {
+    color: #2e7d32;
+    background-color: #e8f5e9;
+    border: 1px solid #a5d6a7;
+}
+
+.status-msg.error {
+    color: #d32f2f;
+    background-color: #ffebee;
+    border: 1px solid #ef9a9a;
+}

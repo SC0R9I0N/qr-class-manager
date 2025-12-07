@@ -74,3 +74,27 @@
 .back-btn:active {
     transform: translateY(0);
 }
+
+.session-qr-section {
+    margin: 2rem 0;
+    padding: 2rem;
+    border: 3px dashed #667eea;
+    border-radius: 12px;
+    background: #fdfdff;
+    text-align: center;
+}
+
+.qr-wrapper {
+    background: white;
+    padding: 1.5rem;
+    display: inline-block;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    margin-top: 1rem;
+}
+
+.session-qr-image {
+    width: 300px;
+    height: 300px;
+    display: block;
+}

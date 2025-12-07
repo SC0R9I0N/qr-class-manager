@@ -43,6 +43,41 @@ async function cognitoRequest<T>(action: string, body: object): Promise<T> {
     return res.json() as Promise<T>;
 }
 
+export async function getValidIdToken(): Promise<string | null> {
+  const idToken = localStorage.getItem("idToken");
+  const refreshTokenValue = localStorage.getItem("refreshToken");
+
+  // naive expiry check: you can decode JWT and check exp claim
+  if (idToken && !isExpired(idToken)) {
+    return idToken;
+  }
+
+  if (refreshTokenValue) {
+    const result = await refreshToken(refreshTokenValue);
+    if (result.AuthenticationResult?.IdToken) {
+      const { IdToken, AccessToken, RefreshToken } = result.AuthenticationResult; // <-- Destructure RefreshToken
+
+      localStorage.setItem("idToken", IdToken);
+      localStorage.setItem("accessToken", AccessToken);
+
+      // CRITICAL FIX: Update the refresh token if a new one is returned
+      if (RefreshToken) {
+        localStorage.setItem("refreshToken", RefreshToken);
+      }
+
+      return IdToken;
+    }
+  }
+
+  return null;
+}
+
+function isExpired(token: string): boolean {
+  const payload = JSON.parse(atob(token.split(".")[1]));
+  const now = Math.floor(Date.now() / 1000);
+  return payload.exp < now;
+}
+
 /* ----------------------------- Public APIs ----------------------------- */
 
 // LOGIN (matches AWS CLI initiate-auth)

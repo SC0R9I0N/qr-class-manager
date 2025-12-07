@@ -1,7 +1,7 @@
-const BASE_URL = "https://7ql71igsye.execute-api.us-east-1.amazonaws.com/prod";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function getAuthToken(): string | null {
-    return localStorage.getItem("accessToken");
+    return localStorage.getItem("idToken");
 }
 
 async function request<T>(

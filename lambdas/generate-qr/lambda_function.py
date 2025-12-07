@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import uuid
+import time
 from datetime import datetime
 from shared import auth_utils
 from shared import dynamodb_utils
@@ -10,115 +11,135 @@ from shared import qr_generator
 from shared import s3_utils
 from shared import sns_utils
 
-# add shared directory to path
+# Add shared directory to path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 
 from qr_generator import generate_and_upload_qr_code
-from dynamodb_utils import get_session, update_session, get_class
+from dynamodb_utils import get_class, create_session, update_session
 from auth_utils import get_user_from_event, require_professor, get_user_id
+
+# Define Universal CORS Headers
+CORS_HEADERS = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization'
+}
 
 
 def lambda_handler(event, context):
     """
-    Expected event body:
-    {
-        "session_id": "string",
-        "expiry_minutes": 60 (optional, default: 60)
-    }
+    Handles creating a new session for a class and generating a corresponding QR code.
+    Triggered by POST /sessions/{session_id}/generate-qr (where session_id is class_id)
     """
     try:
+        # 1. Authentication Check
         user = get_user_from_event(event)
         if not user:
             return {
                 'statusCode': 401,
-                'headers': {'Content-Type': 'application/json'},
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Unauthorized'})
             }
-        
-        # user is a professor
+
         if not require_professor(user):
             return {
                 'statusCode': 403,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'only professors can generate QR codes'})
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': 'Only professors can generate QR codes'})
             }
-        
-        if isinstance(event.get('body'), str):
-            body = json.loads(event['body'])
-        else:
-            body = event.get('body', {})
-        
-        session_id = body.get('session_id')
-        if not session_id:
+
+        # 2. Extract Class ID from path parameters
+        # In CDK, this is mapped from the {session_id} placeholder
+        path_parameters = event.get('pathParameters') or {}
+        class_id = path_parameters.get('session_id')
+
+        if not class_id:
             return {
                 'statusCode': 400,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'session_id is required'})
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': 'Class ID is missing in path parameters'})
             }
-        
-        # make sure session exists and belongs to professor
-        session = get_session(session_id)
-        if not session:
-            return {
-                'statusCode': 404,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'session not found'})
-            }
-        
-        # make sure professor owns the class
-        class_data = get_class(session['class_id'])
+
+        # 3. Ownership and Existence Checks
+        class_data = get_class(class_id)
         if not class_data:
             return {
                 'statusCode': 404,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'class not found'})
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': 'Class not found'})
             }
-        
+
         professor_id = get_user_id(user)
         if class_data.get('professor_id') != professor_id:
             return {
                 'statusCode': 403,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'you do not own this class'})
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': 'You do not own this class'})
             }
-        
-        expiry_minutes = body.get('expiry_minutes', 60)
-        
+
+        # 4. Create New Session Entry
+        new_session_id = str(uuid.uuid4())
+
+        # Formatting friendly date and time for the session title
+        now = datetime.now()
+        date_str = now.strftime("%Y-%m-%d")
+        time_str = now.strftime("%H:%M:%S")
+        title = f"{class_data.get('class_name', 'Session')} - {date_str} {time_str}"
+
+        session_input = {
+            'session_id': new_session_id,
+            'class_id': class_id,
+            'session_date': date_str,
+            'start_time': time_str,
+            'title': title,
+            'is_active': True,
+        }
+
+        # Save placeholder session to DynamoDB
+        create_session(session_input)
+
+        # 5. Generate and Upload QR Code
+        # We use a default expiry of 60 minutes for generated codes
+        expiry_minutes = 60
+
         qr_result = generate_and_upload_qr_code(
-            session_id=session_id,
-            class_id=session['class_id'],
+            session_id=new_session_id,
+            class_id=class_id,
             expiry_minutes=expiry_minutes
         )
-        
+
         if not qr_result.get('qr_code_url'):
+            # Log failure but the session record stays (or implement cleanup here)
+            print(f"Failed to generate QR code for new session {new_session_id}.")
             return {
                 'statusCode': 500,
-                'headers': {'Content-Type': 'application/json'},
-                'body': json.dumps({'error': 'failed to generate QR code'})
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': 'Failed to generate QR code image'})
             }
-        
-        update_session(session_id, {
+
+        # 6. Update Session with QR metadata
+        update_session(new_session_id, {
             'qr_code_url': qr_result['qr_code_url'],
             'qr_code_data': qr_result['qr_code_string'],
             'is_active': True
         })
-        
+
+        # 7. Return Successful Response
         return {
             'statusCode': 200,
-            'headers': {'Content-Type': 'application/json'},
+            'headers': CORS_HEADERS,
             'body': json.dumps({
-                'session_id': session_id,
+                'session_id': new_session_id,
                 'qr_code_url': qr_result['qr_code_url'],
-                'qr_code_data': qr_result['qr_data'],
-                'expires_at': qr_result['qr_data'].get('expiry')
+                'qr_data': qr_result['qr_code_string'],  # Backend matches frontend key expectation
+                'title': title
             })
         }
-    
+
     except Exception as e:
         print(f"Error generating QR code: {str(e)}")
         return {
             'statusCode': 500,
-            'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'internal server error', 'message': str(e)})
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': 'Internal server error', 'message': str(e)})
         }
-
