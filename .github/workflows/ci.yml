@@ -73,7 +73,7 @@ jobs:
       - name: Sync dist to S3
         run: |
           # Matches your 'dist' folder logic from 'npm run build'
-          aws s3 sync ./frontend/qr-class-manger/dist s3://${{ secrets.FRONTEND_BUCKET_NAME }} --delete
+          aws s3 sync ./frontend/qr-class-manager/dist s3://${{ secrets.FRONTEND_BUCKET_NAME }} --delete
 
       # STEP 6: INVALIDATE CLOUDFRONT CACHE
       - name: Invalidate CloudFront Cache
