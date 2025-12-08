@@ -156,6 +156,11 @@ curl -i -X GET https://7ql71igsye.execute-api.us-east-1.amazonaws.com/prod/atten
 
 Expected: `200 OK` with JSON response and CORS headers.
 
+## Architecture Diagram
+
+<img width="1694" height="1020" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/d4416442-6b42-4deb-896f-3238baa304c6" />
+
+
 ## Written Justification
 
 We chose to use AWS Lambda instead of EC2 because our workload is entirely event-driven and triggered by user actions such as scanning QR codes or uploading materials. Lambda’s serverless architecture eliminates the need to manage any sort of infrastructure and is more suitable for bursty and unpredictable traffic patterns, which is to be expected from our project. 
