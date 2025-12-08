@@ -155,3 +155,19 @@ curl -i -X GET https://7ql71igsye.execute-api.us-east-1.amazonaws.com/prod/atten
 ```
 
 Expected: `200 OK` with JSON response and CORS headers.
+
+### Written Justification
+
+We chose to use AWS Lambda instead of EC2 because our workload is entirely event-driven and triggered by user actions such as scanning QR codes or uploading materials. Lambda’s serverless architecture eliminates the need to manage any sort of infrastructure and is more suitable for bursty and unpredictable traffic patterns, which is to be expected from our project. 
+
+AWS Simple Notification Service (SNS) handles real-time notifications specifically for attendance updates in our project. We chose this service over other solutions such as AWS Simple Queue Service (SQS) because SNS provides simple and scalable messaging with very minimal configuration. With SNS, we are able to broadcast notifications to subscribers instantly without manual polling or managing queues and can seamlessly integrate with our Lambda functions. 
+
+We chose DynamoDB as our backend database rather than a service like AWS Relational Database Service (RDS) because all our data entries are key-value and non-relational, making DynamoDB’s flexible schema a better fit for our workload. Since queries for our project are predictable (by class_id, student_id, etc.), DynamoDB’s Global Secondary Indexes (GSI) provide us with efficient lookups that are useful for analytics and student tracking. 
+
+We used Amazon S3 to store both QR codes and lecture materials. We chose Amazon S3 for storage over AWS Elastic Block Store (EBS) because S3 allows easy object-based storage access directly from the web, enabling students and professors to download materials or scan QR codes without a running server. Its seamless integration with CloudFront along with its scalability and easy access made it ideal for our project. 
+
+We chose CloudFront for our front-end React application and for publicly served QR code images. Instead of accessing S3 directly, CloudFront ensures HTTPS delivery, fast response times, and ultimately better security. This improves user experience, especially for devices in classrooms or locations that have varying network speeds. 
+
+We chose Cognito to manage user authentication and authorization for professors and students. This was chosen over other services such as custom JWT systems because Cognito integrates directly with API Gateway and simplifies secure sign-up, sign-in, and group-based access control. With Cognito, we avoided the complexity of building and maintaining our own authentication backend, handling password security, token refresh, and user group management manually. 
+
+API Gateway exposes a unified REST interface for all backend functions of our project. We chose this over manually managing API endpoints on EC2 because it supports CORS, request validation, and integration with Lambda and Cognito. This ultimately made it easy to manage APIs across services in a secure and consistent manner. 
