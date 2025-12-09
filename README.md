@@ -4,8 +4,6 @@ This document provides a comprehensive guide to deploying the QR Class Manager a
 
 The current cloudfront website can be found [here](https://d12l6j7r4rtj92.cloudfront.net/).
 
-And the link to the demo video can be found here.
-
 If you want to simply test the functionality of it, you could register your own student user (Instructor users have to be manually assigned to the professor by the system administrator Cognito user group so as to not pose a security risk) or you could use our two test accounts that we made to test its functionality:
 
 | **Role** | **Email** | **Password** |
