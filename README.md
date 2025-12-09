@@ -173,7 +173,7 @@ This is the overall guide on how to set up this project on your own, if you wish
 
 ## Architecture Diagram
 
-<img width="1694" height="1020" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/d4416442-6b42-4deb-896f-3238baa304c6" />
+<img width="1202" height="945" alt="Architecture Diagram" src="https://github.com/user-attachments/assets/3ddb3024-e51a-4519-a0c7-e1a2d831cf75" />
 
 
 ## Written Justification
