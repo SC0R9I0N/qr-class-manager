@@ -1,3 +1,22 @@
+<p align="center">
+
+  <!-- CI STATUS BADGE -->
+  <a href="https://github.com/SC0R9I0N/qr-class-manager/actions/workflows/deploy.yml">
+    <img src="https://github.com/SC0R9I0N/qr-class-manager/actions/workflows/deploy.yml/badge.svg" alt="CI Status">
+  </a>
+
+  <!-- LIVE SITE BADGE -->
+  <a href="https://d12l6j7r4rtj92.cloudfront.net/">
+    <img src="https://img.shields.io/badge/Live%20Site-CloudFront-blue?style=for-the-badge&logo=amazonaws" alt="Live Site">
+  </a>
+
+  <!-- YOUTUBE DEMO BADGE -->
+  <a href="https://youtu.be/xWBHusEeVLA">
+    <img src="https://img.shields.io/badge/Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube" alt="Demo Video">
+  </a>
+
+</p>
+
 # ClassBits: Serverless Deployment Guide
 
 This document provides a comprehensive guide to deploying the QR Class Manager application, which uses AWS CDK for infrastructure and a React/Vite application for the frontend.
